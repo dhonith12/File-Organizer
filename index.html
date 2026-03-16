@@ -1,0 +1,279 @@
+<!Doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Organizer</title>
+    <link rel="icon" type="image/png" href="File Organizer.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #a3aacb 0%, #c3aed8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #b57feb 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .file-input-label:active {
+            transform: translateY(0);
+        }
+
+        .file-count {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 12px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #organizeBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            min-width: 200px;
+        }
+
+        #organizeBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #organizeBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #downloadBtn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+            min-width: 200px;
+        }
+
+        #downloadBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+        }
+
+        #downloadBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        progress {
+            width: 100%;
+            height: 30px;
+            border-radius: 15px;
+            border: none;
+            background-color: #e0e0e0;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        progress::-webkit-progress-bar {
+            background-color: #e0e0e0;
+            border-radius: 15px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        progress::-webkit-progress-value {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+        }
+
+        progress::-moz-progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 24px;
+                margin-bottom: 25px;
+            }
+
+            button {
+                width: 100%;
+                padding: 12px;
+            }
+
+            .file-input-label {
+                width: 100%;
+                display: block;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+        <h1>📁 File Organizer</h1>
+
+        <div class="file-input-wrapper">
+            <input type="file" id="files" multiple>
+            <label for="files" class="file-input-label">
+                Choose Files to Organize
+            </label>
+            <div class="file-count" id="fileCount">No files selected</div>
+        </div>
+
+        <button id="organizeBtn" onclick="organize()">Organize Files</button>
+
+        <progress id="progress" value="0" max="100" style="display: none;"></progress>
+        <div class="progress-text" id="progressText" style="display: none;"></div>
+
+        <button id="downloadBtn" style="display: none;" disabled onclick="downloadZip()">
+            ⬇️ Download Organized Files
+        </button>
+    </div>
+    
+    <script>
+        let zip;
+
+        // Update file count when files are selected
+        document.getElementById("files").addEventListener("change", function() {
+            const fileCount = this.files.length;
+            const fileCountDisplay = document.getElementById("fileCount");
+            if (fileCount === 0) {
+                fileCountDisplay.textContent = "No files selected";
+            } else if (fileCount === 1) {
+                fileCountDisplay.textContent = "1 file selected";
+            } else {
+                fileCountDisplay.textContent = fileCount + " files selected";
+            }
+        });
+
+        async function organize() {
+            const files = document.getElementById("files").files;
+            const progress = document.getElementById("progress");
+            const progressText = document.getElementById("progressText");
+            const organizeBtn = document.getElementById("organizeBtn");
+
+            zip = new JSZip();
+
+            let total = files.length;
+            let processed = 0;
+
+            if (total === 0) {
+                alert("Please select files to organize.");
+                return;
+            }
+
+            organizeBtn.disabled = true;
+            progress.style.display = "block";
+            progressText.style.display = "block";
+
+            for (let file of files) {
+                let extension = file.name.split(".").pop().toLowerCase();
+                let folder = "Others";
+
+                if (["jpg", "jpeg", "png", "gif"].includes(extension))
+                    folder = "Images";
+                else if (["mp4", "mkv", "avi"].includes(extension))
+                    folder = "Videos";
+                else if (["pdf"].includes(extension))
+                    folder = "Documents/PDF";
+                else if (["ppt", "pptx"].includes(extension))
+                    folder = "Documents/PPT";
+                else if (["doc", "docx"].includes(extension))
+                    folder = "Documents/Word";
+
+                // add file into zip folder
+                zip.folder(folder).file(file.name, file);
+
+                processed++;
+                const percentage = Math.round((processed / total) * 100);
+                progress.value = percentage;
+                progressText.textContent = processed + " of " + total + " files processed";
+            }
+
+            alert("Files organized successfully!");
+            document.getElementById("downloadBtn").style.display = "block";
+            document.getElementById("downloadBtn").disabled = false;
+            organizeBtn.disabled = false;
+        }
+
+        async function downloadZip() {
+            const content = await zip.generateAsync({ type: "blob" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = "organized_files.zip";
+            link.click();
+        }
+    </script>
+</body>
+</html>
