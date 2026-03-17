@@ -13,11 +13,11 @@ def organize_files():
                 ext_folder = os.path.join(folder_path, ext)
                 if not os.path.exists(ext_folder):
                     os.makedirs(ext_folder)
-                if not os.path.exists(dst):
-                    os.rename(src, dst)
+                
                 src = os.path.join(foldername, file)
                 dst = os.path.join(ext_folder, file)
-                os.rename(src, dst)
+                if not os.path.exists(dst):
+                    os.rename(src, dst)
 if __name__ == "__main__":
     organize_files()
 
